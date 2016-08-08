@@ -1,48 +1,63 @@
 import sys
 import os
 import shutil
-
-def testPath(path):
-    print('Target: ', path)
-    print('Normal path: ', os.path.normpath(path))
-    print('Base name: ', os.path.basename(path))
-    print('Base name of norm path: ', os.path.basename(os.path.normpath(path)))
-    print('Target exists? ', os.path.exists(path))
-    print('Target is file? ', os.path.isfile(path))
-    print('Target is dir? ', os.path.isdir(path))
-    if os.path.isdir(path):
-        print('List files: ', os.listdir(path))
-    elif os.path.isfile(path):
-        print('Extension: ', os.path.splitext(path)[1])
-
-def cleanup():
-    print('Cleaning up...')
-    shutil.rmtree(dirTemp)
-    os.mkdir('temp')
+import tempfile
 
 
-dirTemp = os.path.join('temp', '')
+def handle_audio_file(audio_file):
+    print('Handling audio file', audio_file)
 
-print('Number of arguments:', len(sys.argv), 'arguments.')
-print('Argument List:', str(sys.argv))
 
-pathInput = sys.argv[1]
-fileInput = sys.argv[2]
-targetInput = os.path.join(pathInput, fileInput)
-testPath(targetInput)
-testPath(dirTemp)
+def handle_video_file(video_file):
+    print('Handling video file', video_file)
 
-tempDest = os.path.join(dirTemp, os.path.basename(os.path.normpath(targetInput)))
-if os.path.exists(targetInput):
-    if os.path.isfile(targetInput):
-        print('Copying file...')
-        shutil.copyfile(targetInput, tempDest)
-    elif os.path.isdir(targetInput):
-        print('Copying directory...')
-        shutil.copytree(targetInput, tempDest)
 
-if input("Cleanup?") == 'y':
-    cleanup()
+def handle_comic_file(comic_file):
+    print('Handling comic file', comic_file)
+
+
+# Declaring constants
+audio_types = {'.mp3', '.m4a', '.aac', '.flac'}
+video_types = {'.mp4', '.mkv', '.wmv', '.mov'}
+comic_types = {'.cbr', '.cbz', '.pdf'}
+dest_audio = os.path.join('destination', 'audio')
+dest_video = os.path.join('destination', 'video')
+dest_comic = os.path.join('destination', 'comic')
+
+print('Argument list:', str(sys.argv))
+if len(sys.argv) >= 3:
+    path_input = sys.argv[1]
+    file_input = sys.argv[2]
+    target_input = os.path.join(path_input, file_input)
+    if os.path.exists(target_input):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target_temp = os.path.join(temp_dir, os.path.basename(os.path.normpath(target_input)))
+            if os.path.isfile(target_input):
+                print('Copying file', target_input, '->', target_temp)
+                shutil.copyfile(target_input, target_temp)
+                extension = os.path.splitext(target_temp)[1]
+                print('Extension is', extension)
+                if extension in audio_types:
+                    handle_audio_file(target_temp)
+                elif extension in video_types:
+                    handle_video_file(target_temp)
+                elif extension in comic_types:
+                    handle_comic_file(target_temp)
+                else:
+                    print('Unsupported file type.')
+            elif os.path.isdir(target_input):
+                print('Copying directory', target_input, '->', target_temp)
+                shutil.copytree(target_input, target_temp)
+                walk_list = os.walk(target_temp)
+                for item in walk_list:
+                    print('dirpath:', item[0])
+                    print('dirnames:', item[1])
+                    print('filenames:', item[2])
+    else:
+        print(target_input, 'does not exist.')
+else:
+    print('Invalid arguments.')
+
 
 # https://docs.python.org/2/library/os.html
 # https://docs.python.org/3/library/os.path.html
