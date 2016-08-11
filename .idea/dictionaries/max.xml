@@ -2,7 +2,11 @@
   <dictionary name="max">
     <words>
       <w>dest</w>
+      <w>dirpath</w>
       <w>flac</w>
+      <w>rarfile</w>
+      <w>regexed</w>
+      <w>superdir</w>
     </words>
   </dictionary>
 </component>
