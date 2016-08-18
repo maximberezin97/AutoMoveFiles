@@ -3,10 +3,10 @@ import os
 import shutil
 import tempfile
 import re
+import urllib.request
 import PTN
 import rarfile
 from googleapiclient.discovery import build
-import pprint
 # import modules.rarfile_28.rarfile as rarfile
 # import modules.parse_torrent_name_100.PTN as PTN
 
@@ -73,7 +73,9 @@ def handle_audio_file(audio_file):
         fileType='jpg',
         num='1',
         cx=google_cse_id).execute()
-    pprint.pprint(results)
+    image_url = results['items'][0]['link']
+    image_file = os.path.join(temp_dir, 'folder.jpg')
+    urllib.request.urlretrieve(image_url, image_file)
 
 
 def handle_video_file(video_file):
