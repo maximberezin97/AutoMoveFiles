@@ -7,6 +7,8 @@ import urllib.request
 import PTN
 import rarfile
 from googleapiclient.discovery import build
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC
 # import modules.rarfile_28.rarfile as rarfile
 # import modules.parse_torrent_name_100.PTN as PTN
 
@@ -64,18 +66,64 @@ def handle_dir(target_dir):
 
 def handle_audio_file(audio_file):
     print('Handling audio file', audio_file)
+    extension = os.path.splitext(get_superdir_and_file(audio_file)[1])[1]
+    if extension == '.mp3':
+        handle_audio_mp3_file(audio_file)
+    elif extension == '.m4a' or extension is '.aac':
+        handle_audio_m4a_file(audio_file)
+    elif extension == '.flac':
+        handle_audio_flac_file(audio_file)
 
+
+def handle_audio_mp3_file(mp3_file):
+    print('Handling audio MP3 file', mp3_file)
+    mp3 = MP3(mp3_file, ID3=ID3)
+    artist = ''
+    album = ''
+    try:
+        mp3.add_tags()
+    except:
+        pass
+    mp3.add_tags(
+        APIC(
+            encoding=3,
+            mime='image/jpg',
+            type=3,
+            desc=u'Cover',
+            data=open(get_cover_art()).read()
+        )
+    )
+    mp3.save()
+
+
+def handle_audio_m4a_file(m4a_file):
+    print('Handling audio M4A file', m4a_file)
+
+
+def handle_audio_flac_file(flac_file):
+    print('Handling audio FLAC file', flac_file)
+
+
+def get_cover_art(artist, album):
+    image_file = os.path.join(temp_dir, 'folder.jpg')
+    if os.path.exists(image_file):
+        return image_file
+    else:
+        return get_cover_art_google(artist, album, image_file)
+
+
+def get_cover_art_google(artist, album, image_file):
     service = build('customsearch', 'v1', developerKey=google_api_key)
     results = service.cse().list(
-        q='cover art',
+        q='\"'+artist+'\" \"'+album+'\" cover art',
         searchType='image',
         imgSize='large',
         fileType='jpg',
         num='1',
         cx=google_cse_id).execute()
     image_url = results['items'][0]['link']
-    image_file = os.path.join(temp_dir, 'folder.jpg')
     urllib.request.urlretrieve(image_url, image_file)
+    return image_file
 
 
 def handle_video_file(video_file):
@@ -174,3 +222,7 @@ else:
 # https://developers.google.com/api-client-library/python/apis/customsearch/v1
 # https://cloud.google.com/appengine/docs/python/
 # https://automatetheboringstuff.com/chapter9/
+# http://stackoverflow.com/questions/409949/how-do-you-embed-album-art-into-an-mp3-using-python
+# http://mutagen.readthedocs.io/en/latest/user/id3.html
+# https://mutagen.readthedocs.io/en/latest/user/mp4.html
+# http://www.programcreek.com/python/example/73822/mutagen.id3.APIC
