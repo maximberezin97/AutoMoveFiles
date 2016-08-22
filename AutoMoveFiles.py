@@ -8,9 +8,8 @@ import PTN
 import rarfile
 from googleapiclient.discovery import build
 from mutagen.mp3 import MP3
+from mutagen.mp4 import MP4, MP4Cover, AtomDataType
 from mutagen.id3 import ID3, APIC
-# import modules.rarfile_28.rarfile as rarfile
-# import modules.parse_torrent_name_100.PTN as PTN
 
 # PTN.patterns.patterns.append(('issue', '[^\(]\d{2,3}[^\)]'))
 PTN.patterns.patterns.append(('sample', 'Sample|SAMPLE|sample'))
@@ -78,26 +77,33 @@ def handle_audio_file(audio_file):
 def handle_audio_mp3_file(mp3_file):
     print('Handling audio MP3 file', mp3_file)
     mp3 = MP3(mp3_file, ID3=ID3)
-    artist = ''
-    album = ''
-    try:
-        mp3.add_tags()
-    except:
-        pass
-    mp3.add_tags(
-        APIC(
-            encoding=3,
-            mime='image/jpg',
-            type=3,
-            desc=u'Cover',
-            data=open(get_cover_art()).read()
-        )
-    )
-    mp3.save()
+    if 'APIC' not in mp3 and 'APIC:' not in mp3:
+        print('Getting cover art')
+        artist = mp3['TPE1'][0]
+        album = mp3['TALB'][0]
+        cover_data = open(get_cover_art(artist, album), mode='rb')
+        apic = APIC(encoding=3, mime='image/jpg', type=3, desc=u'Cover', data=cover_data.read())
+        cover_data.close()
+        mp3.add_tags(apic)
+        mp3.save()
+    else:
+        print(mp3_file, 'already has cover artwork.')
 
 
 def handle_audio_m4a_file(m4a_file):
     print('Handling audio M4A file', m4a_file)
+    m4a = MP4(m4a_file)
+    if 'covr' not in m4a:
+        print('Getting cover art')
+        artist = m4a['\xa9ART'][0]
+        album = m4a['\xa9alb'][0]
+        cover_data = open(get_cover_art(artist, album), mode='rb')
+        covr = MP4Cover(data=cover_data.read(), imageformat=AtomDataType.JPEG)
+        cover_data.close()
+        m4a['covr'] = [covr]
+        m4a.save()
+    else:
+        print(m4a_file, 'already has cover artwork.')
 
 
 def handle_audio_flac_file(flac_file):
@@ -105,7 +111,7 @@ def handle_audio_flac_file(flac_file):
 
 
 def get_cover_art(artist, album):
-    image_file = os.path.join(temp_dir, 'folder.jpg')
+    image_file = os.path.join(temp_dir, artist+' - '+album+'.jpg')
     if os.path.exists(image_file):
         return image_file
     else:
@@ -114,14 +120,17 @@ def get_cover_art(artist, album):
 
 def get_cover_art_google(artist, album, image_file):
     service = build('customsearch', 'v1', developerKey=google_api_key)
+    query = '\"'+artist+'\" \"'+album+'\" cover art'
+    print('Searching Google with query "'+query+'"')
     results = service.cse().list(
-        q='\"'+artist+'\" \"'+album+'\" cover art',
+        q=query,
         searchType='image',
         imgSize='large',
         fileType='jpg',
         num='1',
         cx=google_cse_id).execute()
     image_url = results['items'][0]['link']
+    print('Result image URL is', image_url)
     urllib.request.urlretrieve(image_url, image_file)
     return image_file
 
