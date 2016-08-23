@@ -10,6 +10,7 @@ from googleapiclient.discovery import build
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Cover, AtomDataType
 from mutagen.id3 import ID3, APIC
+from mutagen.flac import FLAC, Picture
 
 # PTN.patterns.patterns.append(('issue', '[^\(]\d{2,3}[^\)]'))
 PTN.patterns.patterns.append(('sample', 'Sample|SAMPLE|sample'))
@@ -67,47 +68,45 @@ def handle_audio_file(audio_file):
     print('Handling audio file', audio_file)
     extension = os.path.splitext(get_superdir_and_file(audio_file)[1])[1]
     if extension == '.mp3':
-        handle_audio_mp3_file(audio_file)
+        mp3 = MP3(audio_file, ID3=ID3)
+        if 'APIC:' not in mp3:
+            print('Getting cover art')
+            artist = mp3['TPE1'][0]
+            album = mp3['TALB'][0]
+            cover_data = open(get_cover_art(artist, album), mode='rb')
+            apic = APIC(encoding=3, mime='image/jpg', type=3, desc=u'Cover', data=cover_data.read())
+            cover_data.close()
+            mp3.add_tags(apic)
+            mp3.save()
+        else:
+            print(audio_file, 'already has cover artwork.')
     elif extension == '.m4a' or extension is '.aac':
-        handle_audio_m4a_file(audio_file)
+        m4a = MP4(audio_file)
+        if 'covr' not in m4a:
+            print('Getting cover art')
+            artist = m4a['\xa9ART'][0]
+            album = m4a['\xa9alb'][0]
+            cover_data = open(get_cover_art(artist, album), mode='rb')
+            covr = MP4Cover(data=cover_data.read(), imageformat=AtomDataType.JPEG)
+            cover_data.close()
+            m4a['covr'] = [covr]
+            m4a.save()
+        else:
+            print(audio_file, 'already has cover artwork.')
     elif extension == '.flac':
-        handle_audio_flac_file(audio_file)
-
-
-def handle_audio_mp3_file(mp3_file):
-    print('Handling audio MP3 file', mp3_file)
-    mp3 = MP3(mp3_file, ID3=ID3)
-    if 'APIC' not in mp3 and 'APIC:' not in mp3:
-        print('Getting cover art')
-        artist = mp3['TPE1'][0]
-        album = mp3['TALB'][0]
-        cover_data = open(get_cover_art(artist, album), mode='rb')
-        apic = APIC(encoding=3, mime='image/jpg', type=3, desc=u'Cover', data=cover_data.read())
-        cover_data.close()
-        mp3.add_tags(apic)
-        mp3.save()
-    else:
-        print(mp3_file, 'already has cover artwork.')
-
-
-def handle_audio_m4a_file(m4a_file):
-    print('Handling audio M4A file', m4a_file)
-    m4a = MP4(m4a_file)
-    if 'covr' not in m4a:
-        print('Getting cover art')
-        artist = m4a['\xa9ART'][0]
-        album = m4a['\xa9alb'][0]
-        cover_data = open(get_cover_art(artist, album), mode='rb')
-        covr = MP4Cover(data=cover_data.read(), imageformat=AtomDataType.JPEG)
-        cover_data.close()
-        m4a['covr'] = [covr]
-        m4a.save()
-    else:
-        print(m4a_file, 'already has cover artwork.')
-
-
-def handle_audio_flac_file(flac_file):
-    print('Handling audio FLAC file', flac_file)
+        flac = FLAC(audio_file)
+        if not flac.pictures:
+            print('Getting cover art')
+            artist = flac['artist'][0]
+            album = flac['album'][0]
+            cover_data = open(get_cover_art(artist, album), mode='rb')
+            picture = Picture(type=3, mime='image/jpg', desc=u'Cover', data=cover_data.read())
+            cover_data.close()
+            flac.add_picture(picture)
+            flac.save()
+        else:
+            print(audio_file, 'already has cover artwork.')
+    move_or_overwrite(audio_file, dest_audio, os.path.join(dest_audio, get_superdir_and_file(audio_file)[1]))
 
 
 def get_cover_art(artist, album):
@@ -120,7 +119,7 @@ def get_cover_art(artist, album):
 
 def get_cover_art_google(artist, album, image_file):
     service = build('customsearch', 'v1', developerKey=google_api_key)
-    query = '\"'+artist+'\" \"'+album+'\" cover art'
+    query = '\"'+artist+'\" \"'+album+'\" cover'
     print('Searching Google with query "'+query+'"')
     results = service.cse().list(
         q=query,
@@ -196,18 +195,23 @@ dest_video = os.path.join('destination', 'video')
 dest_comic = os.path.join('destination', 'comic')
 dest_movie = os.path.join(dest_video, 'movies')
 dest_tv = os.path.join(dest_video, 'television')
-google_api_key = ''
-google_cse_id = ''
+google_api_key = 'NONE'
+google_cse_id = 'NONE'
 
-if len(sys.argv) >= 3:
-    if len(sys.argv) >= 5:
-        google_api_key = sys.argv[3]
-        google_cse_id = sys.argv[4]
-        print('Google API key:', google_api_key)
-        print('Google CSE ID:', google_cse_id)
-    path_input = sys.argv[1]
-    file_input = sys.argv[2]
-    target_input = os.path.join(path_input, file_input)
+if len(sys.argv) >= 2:
+    target_input = sys.argv[1]
+    if len(sys.argv) >= 3:
+        target_input = os.path.join(sys.argv[1], sys.argv[2])
+        if len(sys.argv) >= 4:
+            target_input = sys.argv[1]
+            google_api_key = sys.argv[2]
+            google_cse_id = sys.argv[3]
+            if len(sys.argv) >= 5:
+                target_input = os.path.join(sys.argv[1], sys.argv[2])
+                google_api_key = sys.argv[3]
+                google_cse_id = sys.argv[4]
+    print('Google API key:', google_api_key)
+    print('Google CSE ID:', google_cse_id)
     if os.path.exists(target_input):
         with tempfile.TemporaryDirectory() as temp_dir:
             target_temp = os.path.join(temp_dir, get_superdir_and_file(target_input)[1])
