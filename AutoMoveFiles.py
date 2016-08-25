@@ -12,11 +12,12 @@ from mutagen.mp4 import MP4, MP4Cover, AtomDataType
 from mutagen.id3 import ID3, APIC
 from mutagen.flac import FLAC, Picture
 
-# PTN.patterns.patterns.append(('issue', '[^\(]\d{2,3}[^\)]'))
 PTN.patterns.patterns.append(('sample', 'Sample|SAMPLE|sample'))
 PTN.patterns.patterns.append(('digital', 'Digital|DIGITAL|digital|Webrip|WEBRIP|webrip'))
+PTN.patterns.patterns.append(('fcbd', 'FCBD|fcbd|[Ff]ree *[Cc]omic *[Bb]ook *[Dd]ay'))
 PTN.patterns.types['sample'] = 'boolean'
 PTN.patterns.types['digital'] = 'boolean'
+PTN.patterns.types['fcbd'] = 'boolean'
 
 
 def get_superdir_and_file(file):
@@ -32,6 +33,14 @@ def move_or_overwrite(file_src, dir_dest, file_dest):
     shutil.move(file_src, dir_dest)
 
 
+def print_exist(path, cat):
+    if os.path.exists(path):
+        print(cat+': '+os.path.abspath(path))
+    else:
+        print(cat+': '+os.path.abspath(path)+' does not exist.')
+    return os.path.exists(path)
+
+
 def is_television(traits):
     return 'season' and 'episode' in traits
 
@@ -39,7 +48,6 @@ def is_television(traits):
 def handle_file(target_file):
     print('Handling file', target_file)
     extension = os.path.splitext(target_file)[1]
-    print('Extension is', extension)
     if rarfile.is_rarfile(target_file):
         target_rar = rarfile.RarFile(target_file)
         superdir, filename = get_superdir_and_file(target_file)
@@ -100,7 +108,11 @@ def handle_audio_file(audio_file):
             artist = flac['artist'][0]
             album = flac['album'][0]
             cover_data = open(get_cover_art(artist, album), mode='rb')
-            picture = Picture(type=3, mime='image/jpg', desc=u'Cover', data=cover_data.read())
+            picture = Picture()
+            picture.type = 3
+            picture.mime = 'image/jpg'
+            picture.desc = u'Cover'
+            picture.data = cover_data.read()
             cover_data.close()
             flac.add_picture(picture)
             flac.save()
@@ -174,12 +186,29 @@ def handle_video_file(video_file):
 
 def handle_comic_file(comic_file):
     print('Handling comic file', comic_file)
-    comic_parsed = PTN.parse(os.path.splitext(get_superdir_and_file(comic_file)[1])[0])
-    print(comic_parsed)
-    regex = re.compile('\(.*\)')
     superdir, file = get_superdir_and_file(comic_file)
     name, ext = os.path.splitext(file)
-    rename = regex.sub('', name).strip(' ')
+    comic_parse = PTN.parse(name)
+    print('Parsed from name:', comic_parse)
+    issue_regex = re.compile('(\d{1,3}(\.\d*)*\s*$)')
+    title_split = issue_regex.split(comic_parse['title'])
+    title = title_split[0].strip()
+    issue = 'NONE'
+    if len(title_split) >= 2:
+        issue = title_split[1]
+    if 'fcbd' in comic_parse:
+        if comic_parse['fcbd']:
+            issue = 'FCBD'
+    if 'year' in comic_parse:
+        if issue != 'NONE':
+            rename = title+' '+issue+' ('+str(comic_parse['year'])+')'
+        else:
+            rename = title+' ('+str(comic_parse['year'])+')'
+    else:
+        if issue != 'NONE':
+            rename = title+' '+issue
+        else:
+            rename = title
     comic_file_renamed = os.path.join(superdir, rename+ext)
     print('Renaming', comic_file, '->', comic_file_renamed)
     shutil.move(comic_file, comic_file_renamed)
@@ -210,32 +239,31 @@ if len(sys.argv) >= 2:
                 target_input = os.path.join(sys.argv[1], sys.argv[2])
                 google_api_key = sys.argv[3]
                 google_cse_id = sys.argv[4]
+                if len(sys.argv) >= 8:
+                    dest_audio = os.path.join('', sys.argv[5])
+                    dest_video = os.path.join('', sys.argv[6])
+                    dest_comic = os.path.join('', sys.argv[7])
     print('Google API key:', google_api_key)
     print('Google CSE ID:', google_cse_id)
-    if os.path.exists(target_input):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            target_temp = os.path.join(temp_dir, get_superdir_and_file(target_input)[1])
-            if os.path.isfile(target_input):
-                print('Copying file', target_input, '->', target_temp)
-                shutil.copyfile(target_input, target_temp)
-                handle_file(target_temp)
-            elif os.path.isdir(target_input):
-                print('Copying directory', target_input, '->', target_temp)
-                shutil.copytree(target_input, target_temp)
-                handle_dir(target_temp)
-    else:
-        print(target_input, 'does not exist.')
+    if print_exist(dest_audio, 'Audio') and print_exist(dest_video, 'Video') and print_exist(dest_comic, 'Comic'):
+        if os.path.exists(target_input):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                target_temp = os.path.join(temp_dir, get_superdir_and_file(target_input)[1])
+                if os.path.isfile(target_input):
+                    print('Copying file', target_input, '->', target_temp)
+                    shutil.copyfile(target_input, target_temp)
+                    handle_file(target_temp)
+                elif os.path.isdir(target_input):
+                    print('Copying directory', target_input, '->', target_temp)
+                    shutil.copytree(target_input, target_temp)
+                    handle_dir(target_temp)
+        else:
+            print(target_input, 'does not exist.')
 else:
     print('Invalid arguments.')
-
-
-# https://docs.python.org/2/library/os.html
-# https://docs.python.org/3/library/os.path.html
-# https://docs.python.org/2/library/shutil.html
-# https://developers.google.com/api-client-library/python/apis/customsearch/v1
-# https://cloud.google.com/appengine/docs/python/
-# https://automatetheboringstuff.com/chapter9/
-# http://stackoverflow.com/questions/409949/how-do-you-embed-album-art-into-an-mp3-using-python
-# http://mutagen.readthedocs.io/en/latest/user/id3.html
-# https://mutagen.readthedocs.io/en/latest/user/mp4.html
-# http://www.programcreek.com/python/example/73822/mutagen.id3.APIC
+    print('The following are valid parameters:')
+    print('[absolute path]')
+    print('[directory] [filename]')
+    print('[absolute path] [Google API key] [Google CSE ID]')
+    print('[directory] [filename] [Google API key] [Google CSE ID]')
+    print('[directory] [filename] [Google API key] [Google CSE ID] [audio dest] [video dest] [comic dest]')
