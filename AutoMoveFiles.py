@@ -25,13 +25,14 @@ dest_movie = os.path.join(dest_video, 'movies')
 dest_tv = os.path.join(dest_video, 'television')
 google_api_key = 'NONE'
 google_cse_id = 'NONE'
-rarfile.UNRAR_TOOL = rarfile.UNRAR_TOOL
 PTN.patterns.patterns.append(('sample', 'Sample|SAMPLE|sample'))
 PTN.patterns.patterns.append(('digital', 'Digital|DIGITAL|digital|Webrip|WEBRIP|webrip'))
 PTN.patterns.patterns.append(('fcbd', 'FCBD|fcbd|[Ff]ree *[Cc]omic *[Bb]ook *[Dd]ay'))
 PTN.patterns.types['sample'] = 'boolean'
 PTN.patterns.types['digital'] = 'boolean'
 PTN.patterns.types['fcbd'] = 'boolean'
+if os.name == 'nt':
+    rarfile.UNRAR_TOOL = 'unrarw32.exe'
 
 
 def move_or_overwrite(file_src, dir_dest, file_dest):
@@ -69,8 +70,9 @@ def handle_file(target_file):
     extension = os.path.splitext(target_file)[1]
     if extension in extract_types:
         target_rar = rarfile.RarFile(target_file)
-        superdir, filename = get_superdir_and_file(target_file)
-        extract_path = os.path.join(superdir, os.path.splitext(filename)[0])
+        superdir = os.path.dirname(target_file)
+        filename = os.path.basename(target_file)
+        extract_path = os.path.join(superdir, 'extracted', os.path.splitext(filename)[0])
         print('Extracting', target_file, '->', extract_path)
         target_rar.extractall(extract_path)
         handle_dir(extract_path)
@@ -115,6 +117,7 @@ def handle_audio_file(audio_file):
             print(audio_file, 'already has cover artwork.')
     elif extension == '.m4a' or extension is '.aac':
         m4a = MP4(audio_file)
+        print(list(dict(m4a).keys()))
         if 'covr' not in m4a:
             artist = m4a['\xa9ART'][0]
             album = m4a['\xa9alb'][0]
@@ -130,6 +133,7 @@ def handle_audio_file(audio_file):
             print(audio_file, 'already has cover artwork.')
     elif extension == '.flac':
         flac = FLAC(audio_file)
+        print(list(dict(flac).keys()))
         if not flac.pictures:
             artist = flac['artist'][0]
             album = flac['album'][0]
