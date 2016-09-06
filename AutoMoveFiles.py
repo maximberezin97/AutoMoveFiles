@@ -33,6 +33,7 @@ PTN.patterns.types['digital'] = 'boolean'
 PTN.patterns.types['fcbd'] = 'boolean'
 if os.name == 'nt':
     rarfile.UNRAR_TOOL = 'unrarw32.exe'
+    rarfile.UNRAR_TOOL = '7z.exe'
 
 
 def move_or_overwrite(file_src, dir_dest, file_dest):
