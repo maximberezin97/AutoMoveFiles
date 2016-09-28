@@ -14,28 +14,6 @@ from mutagen.id3 import ID3, APIC, PictureType
 from mutagen.flac import FLAC, Picture
 
 
-extract_types = {'.rar'}
-audio_types = {'.mp3', '.m4a', '.aac', '.flac'}
-video_types = {'.mp4', '.mkv', '.avi', '.wmv', '.mov'}
-comic_types = {'.cbr', '.cbz', '.pdf'}
-dest_audio = os.path.join('destination', 'audio')
-dest_video = os.path.join('destination', 'video')
-dest_comic = os.path.join('destination', 'comic')
-dest_movie = os.path.join(dest_video, 'movies')
-dest_tv = os.path.join(dest_video, 'television')
-google_api_key = 'NONE'
-google_cse_id = 'NONE'
-PTN.patterns.patterns.append(('sample', 'Sample|SAMPLE|sample'))
-PTN.patterns.patterns.append(('digital', 'Digital|DIGITAL|digital|Webrip|WEBRIP|webrip'))
-PTN.patterns.patterns.append(('fcbd', 'FCBD|fcbd|[Ff]ree *[Cc]omic *[Bb]ook *[Dd]ay'))
-PTN.patterns.types['sample'] = 'boolean'
-PTN.patterns.types['digital'] = 'boolean'
-PTN.patterns.types['fcbd'] = 'boolean'
-if os.name == 'nt':
-    rarfile.UNRAR_TOOL = 'unrarw32.exe'
-    rarfile.UNRAR_TOOL = '7z.exe'
-
-
 def move_or_overwrite(file_src, dir_dest, file_dest):
     if os.path.exists(file_dest):
         print('Overwriting', file_src, '->', file_dest)
@@ -72,8 +50,8 @@ def handle_file(target_file):
     if extension in extract_types:
         target_rar = rarfile.RarFile(target_file)
         superdir = os.path.dirname(target_file)
-        filename = os.path.basename(target_file)
-        extract_path = os.path.join(superdir, 'extracted', os.path.splitext(filename)[0])
+        file = os.path.basename(target_file)
+        extract_path = os.path.join(superdir, 'extracted', os.path.splitext(file)[0])
         print('Extracting', target_file, '->', extract_path)
         target_rar.extractall(extract_path)
         handle_dir(extract_path)
@@ -170,12 +148,12 @@ def cover_in_src(audio_path):
     if os.path.isfile(audio_path):
         audio_path = os.path.dirname(audio_path)
     for dirpath in os.walk(audio_path):
-        for filename in dirpath[2]:
-            name = os.path.basename(filename).lower()
+        for file in dirpath[2]:
+            name = os.path.basename(file).lower()
             if name == 'cover.jpg' or name == 'folder.jpg':
-                absolute_path = os.path.join(dirpath[0], filename)
-                print('Cover found in', absolute_path)
-                return absolute_path
+                path = os.path.join(dirpath[0], file)
+                print('Cover found in', path)
+                return path
     return None
 
 
@@ -219,11 +197,11 @@ def handle_video_file(video_file):
         print('Renaming', video_file, '->', video_file_renamed)
         shutil.move(video_file, video_file_renamed)
         if is_television(video_parse):
-            tv_dir = os.path.join(dest_tv, video_parse['title'])
-            if not os.path.exists(tv_dir):
-                print('Creating directory', tv_dir)
-                os.mkdir(tv_dir)
-            season_dir = os.path.join(tv_dir, 'Season ' + str(video_parse['season']))
+            telev_dir = os.path.join(dest_telev, video_parse['title'])
+            if not os.path.exists(telev_dir):
+                print('Creating directory', telev_dir)
+                os.mkdir(telev_dir)
+            season_dir = os.path.join(telev_dir, 'Season ' + str(video_parse['season']))
             if not os.path.exists(season_dir):
                 print('Creating directory', season_dir)
                 os.mkdir(season_dir)
@@ -264,28 +242,75 @@ def handle_comic_file(comic_file):
     shutil.move(comic_file, comic_file_renamed)
     move_or_overwrite(comic_file_renamed, dest_comic, os.path.join(dest_comic, rename+ext))
 
+
 print('**********************************************************************************************************************************************************************************************')
 print(datetime.datetime.now())
 print(sys.argv)
-if len(sys.argv) >= 2:
-    target_input = sys.argv[1]
-    if len(sys.argv) >= 3:
-        target_input = os.path.join(sys.argv[1], sys.argv[2])
-        if len(sys.argv) >= 4:
-            target_input = sys.argv[1]
-            google_api_key = sys.argv[2]
-            google_cse_id = sys.argv[3]
-            if len(sys.argv) >= 5:
-                target_input = os.path.join(sys.argv[1], sys.argv[2])
-                google_api_key = sys.argv[3]
-                google_cse_id = sys.argv[4]
-                if len(sys.argv) >= 8:
-                    dest_audio = os.path.join('', sys.argv[5])
-                    dest_video = os.path.join('', sys.argv[6])
-                    dest_comic = os.path.join('', sys.argv[7])
-    print('Google API key:', google_api_key)
-    print('Google CSE ID:', google_cse_id)
-    if print_exist(dest_audio, 'Audio') and print_exist(dest_video, 'Video') and print_exist(dest_comic, 'Comic'):
+
+extract_types = {'.rar'}
+audio_types = {'.mp3', '.m4a', '.aac', '.flac'}
+video_types = {'.mp4', '.mkv', '.avi', '.wmv', '.mov'}
+comic_types = {'.cbr', '.cbz', '.pdf'}
+PTN.patterns.patterns.append(('sample', 'Sample|SAMPLE|sample'))
+PTN.patterns.patterns.append(('digital', 'Digital|DIGITAL|digital|Webrip|WEBRIP|webrip'))
+PTN.patterns.patterns.append(('fcbd', 'FCBD|fcbd|[Ff]ree *[Cc]omic *[Bb]ook *[Dd]ay'))
+PTN.patterns.types['sample'] = 'boolean'
+PTN.patterns.types['digital'] = 'boolean'
+PTN.patterns.types['fcbd'] = 'boolean'
+
+absolute_path = ''
+directory = ''
+filename = ''
+target_input = ''
+directory = ''
+filename = ''
+google_cse_id = ''
+google_api_key = ''
+dest_audio = ''
+dest_movie = ''
+dest_telev = ''
+dest_comic = ''
+
+if len(sys.argv) > 1:
+    for arg in sys.argv[1:]:
+        param = arg.split('=')
+        if param[0] == 'absolute_path':
+            absolute_path = param[1]
+        elif param[0] == 'directory':
+            directory = param[1]
+        elif param[0] == 'filename':
+            filename = param[1]
+        elif param[0] == 'google_cse_id':
+            google_cse_id = param[1]
+        elif param[0] == 'google_api_key':
+            google_api_key = param[1]
+        elif param[0] == 'unrar_tool':
+            rarfile.UNRAR_TOOL = os.path.join('', param[1])
+        elif param[0] == 'dest_audio':
+            dest_audio = os.path.join('', param[1])
+        elif param[0] == 'dest_movie':
+            dest_movie = os.path.join('', param[1])
+        elif param[0] == 'dest_telev':
+            dest_telev = os.path.join('', param[1])
+        elif param[0] == 'dest_comic':
+            dest_comic = os.path.join('', param[1])
+
+    if directory != '':
+        target_input = os.path.join(directory, filename)
+    if absolute_path != '':
+        target_input = os.path.join('', absolute_path)
+
+    print('absolute_path:', absolute_path)
+    print('directory:', directory)
+    print('filename:', filename)
+    print('target_input:', target_input)
+    print('google_cse_id:', google_cse_id)
+    print('google_api_key:', google_api_key)
+    print('unrar_tool:', rarfile.UNRAR_TOOL)
+
+    if print_exist(dest_audio, 'dest_audio') and print_exist(dest_movie, 'dest_movie') \
+            and print_exist(dest_telev, 'dest_telev') and print_exist(dest_comic, 'dest_comic'):
+        print()
         if os.path.exists(target_input):
             with tempfile.TemporaryDirectory() as temp_dir:
                 target_temp = os.path.join(temp_dir, os.path.basename(os.path.normpath(target_input)))
@@ -300,10 +325,13 @@ if len(sys.argv) >= 2:
         else:
             print(target_input, 'does not exist.')
 else:
-    print('Invalid arguments.')
+    print('Enter parameter values in the format "parameter=value" '
+          'with each argument separated by spaces, quotes recommended.')
     print('The following are valid parameters:')
-    print('[absolute path]')
-    print('[directory] [filename]')
-    print('[absolute path] [Google API key] [Google CSE ID]')
-    print('[directory] [filename] [Google API key] [Google CSE ID]')
-    print('[directory] [filename] [Google API key] [Google CSE ID] [audio dest] [video dest] [comic dest]')
+    print('\nabsolute_path\ndirectory\nfilename\ngoogle_cse_id\ngoogle_api_key\nunrar_tool\n'
+          'dest_audio\ndest_movie\ndest_telev\ndest_comic\n')
+    print('absolute_path OR (directory AND filename) must be provided. If entering file, use filename==""')
+    print('google_cse_id AND google_api_key must be provided to fetch missing cover artwork for audio content.')
+    print('UnRAR.exe absolute path must be provided if handling archived content on Windows. Not required on Linux.')
+    print('All content destinations (dest_audio, dest_movie, dest_telev, dest_comic) must be provided and existing.')
+
