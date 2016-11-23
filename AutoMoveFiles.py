@@ -264,6 +264,7 @@ filename = ''
 target_input = ''
 directory = ''
 filename = ''
+temp_dir = ''
 google_cse_id = ''
 google_api_key = ''
 dest_audio = ''
@@ -280,6 +281,8 @@ if len(sys.argv) > 1:
             directory = param[1]
         elif param[0] == 'filename':
             filename = param[1]
+        elif param[0] == 'temp_dir':
+            temp_dir = param[1]
         elif param[0] == 'google_cse_id':
             google_cse_id = param[1]
         elif param[0] == 'google_api_key':
@@ -299,10 +302,13 @@ if len(sys.argv) > 1:
         target_input = os.path.join(directory, filename)
     if absolute_path != '':
         target_input = os.path.join('', absolute_path)
+    if temp_dir == '' or (temp_dir != '' and not os.path.exists(temp_dir)):
+        temp_dir = tempfile.TemporaryDirectory()
 
     print('absolute_path:', absolute_path)
     print('directory:', directory)
     print('filename:', filename)
+    print('temp_dir:', temp_dir)
     print('target_input:', target_input)
     print('google_cse_id:', google_cse_id)
     print('google_api_key:', google_api_key)
@@ -312,26 +318,26 @@ if len(sys.argv) > 1:
             and print_exist(dest_telev, 'dest_telev') and print_exist(dest_comic, 'dest_comic'):
         print()
         if os.path.exists(target_input):
-            with tempfile.TemporaryDirectory() as temp_dir:
-                target_temp = os.path.join(temp_dir, os.path.basename(os.path.normpath(target_input)))
-                if os.path.isfile(target_input):
-                    print('Copying file', target_input, '->', target_temp)
-                    shutil.copyfile(target_input, target_temp)
-                    handle_file(target_temp)
-                elif os.path.isdir(target_input):
-                    print('Copying directory', target_input, '->', target_temp)
-                    shutil.copytree(target_input, target_temp)
-                    handle_dir(target_temp)
+            target_temp = os.path.join(temp_dir, os.path.basename(os.path.normpath(target_input)))
+            if os.path.isfile(target_input):
+                print('Copying file', target_input, '->', target_temp)
+                shutil.copyfile(target_input, target_temp)
+                handle_file(target_temp)
+            elif os.path.isdir(target_input):
+                print('Copying directory', target_input, '->', target_temp)
+                shutil.copytree(target_input, target_temp)
+                handle_dir(target_temp)
         else:
             print(target_input, 'does not exist.')
 else:
     print('Enter parameter values in the format "parameter=value" '
           'with each argument separated by spaces, quotes recommended.')
     print('The following are valid parameters:')
-    print('\nabsolute_path\ndirectory\nfilename\ngoogle_cse_id\ngoogle_api_key\nunrar_tool\n'
+    print('\nabsolute_path\ndirectory\nfilename\ntemp_dir\ngoogle_cse_id\ngoogle_api_key\nunrar_tool\n'
           'dest_audio\ndest_movie\ndest_telev\ndest_comic\n')
     print('absolute_path OR (directory AND filename) must be provided. If entering file, use filename==""')
     print('google_cse_id AND google_api_key must be provided to fetch missing cover artwork for audio content.')
     print('UnRAR.exe absolute path must be provided if handling archived content on Windows. Not required on Linux.')
     print('All content destinations (dest_audio, dest_movie, dest_telev, dest_comic) must be provided and existing.')
+    print('If no temp_dir is provided, or is provided but does not exist, one will be created in the default location.')
 
