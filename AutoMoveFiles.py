@@ -68,8 +68,8 @@ def handle_file(target_file):
 def handle_dir(target_dir):
     print('Handling directory', target_dir)
     for dirpath in os.walk(target_dir):
-        for filename in dirpath[2]:
-            handle_file(os.path.join(dirpath[0], filename))
+        for file_in_dir in dirpath[2]:
+            handle_file(os.path.join(dirpath[0], file_in_dir))
 
 
 def handle_audio_file(audio_file):
@@ -181,34 +181,66 @@ def handle_video_file(video_file):
     video_parse = PTN.parse(name)
     print(video_parse)
     if 'sample' not in video_parse:
-        if is_television(video_parse):
-            if video_parse['season'] < 10:
-                season = 'S0' + str(video_parse['season'])
-            else:
-                season = 'S' + str(video_parse['season'])
-            if video_parse['episode'] < 10:
-                episode = 'E0' + str(video_parse['episode'])
-            else:
-                episode = 'E' + str(video_parse['episode'])
-            rename = video_parse['title'] + ' ' + season + episode + ' [' + video_parse['resolution'] + ']'
+        # Retrieve traits common to both movies and TV shows.
+        title = str(video_parse['title'])
+        # Get the year of release.
+        if 'year' in video_parse:
+            year = ' (' + str(video_parse['year']) + ')'
         else:
-            rename = video_parse['title'] + ' (' + str(video_parse['year']) + ') [' + video_parse['resolution'] + ']'
+            year = ''
+        # Get resolution if resolution was found.
+        # Titles where resolution is 'HDTV' will not be found here.
+        if 'resolution' in video_parse:
+            resolution = ' [' + str(video_parse['resolution']) + ']'
+        else:
+            resolution = ''
+        # Split to retrieve traits unique to TV shows.
+        if is_television(video_parse):
+            # Get season if season was found.
+            if 'season' in video_parse:
+                if video_parse['season'] < 10:
+                    season = ' S0' + str(video_parse['season'])
+                else:
+                    season = ' S' + str(video_parse['season'])
+            else:
+                season = ' S00'
+            # Get episode if episode was found.
+            if 'episode' in video_parse:
+                if video_parse['episode'] < 10:
+                    episode = 'E0' + str(video_parse['episode'])
+                else:
+                    episode = 'E' + str(video_parse['episode'])
+            else:
+                episode = 'E00'
+
+            rename = title + season + episode + year + resolution
+        else:
+            # No unique traits to movies, simply rename with present traits.
+            rename = title + year + resolution
         video_file_renamed = os.path.join(superdir, rename + ext)
         print('Renaming', video_file, '->', video_file_renamed)
         shutil.move(video_file, video_file_renamed)
+        # Handle moving TV show file.
         if is_television(video_parse):
-            telev_dir = os.path.join(dest_telev, video_parse['title'])
+            # Get the folder for this TV show.
+            telev_dir = os.path.join(dest_telev, title)
+            # If the folder for this TV show doesn't exist, make it.
             if not os.path.exists(telev_dir):
                 print('Creating directory', telev_dir)
                 os.mkdir(telev_dir)
-            season_dir = os.path.join(telev_dir, 'Season ' + str(video_parse['season']))
+            # Get the folder for this season of this TV show.
+            season_dir = os.path.join(telev_dir, 'Season ' + season)
+            # If the folder for this season of this TV show doesn't exist yet, make it
             if not os.path.exists(season_dir):
                 print('Creating directory', season_dir)
                 os.mkdir(season_dir)
+            # Move the TV show file into the folder of the season of the TV show.
             move_or_overwrite(video_file_renamed, season_dir, os.path.join(season_dir, rename + ext))
         else:
+            # Move the movie file into the movies folder.
             move_or_overwrite(video_file_renamed, dest_movie, os.path.join(dest_movie, rename + ext))
     else:
+        # If the parser found that this file is a sample file, skip it entirely.
         print('Sample video file, skipping.')
 
 
@@ -218,25 +250,28 @@ def handle_comic_file(comic_file):
     name, ext = os.path.splitext(os.path.basename(comic_file))
     comic_parse = PTN.parse(name)
     print(comic_parse)
+    # The parser matches comic book title and issue number both into 'title' key.
+    # Compile the regex that matches for comic issue numbers.
     issue_regex = re.compile('(\d{1,3}(\.\d*)*\s*$)')
+    # Split the title by regex matching.
     title_split = issue_regex.split(comic_parse['title'])
+    # Strip trailing spaces from the title.
     title = title_split[0].strip()
-    issue = 'NONE'
+    # If the split found a match and actually split, make the second half the issue number.
     if len(title_split) >= 2:
-        issue = title_split[1]
+        issue = ' ' + title_split[1].strip()
+    else:
+        issue = ''
+    # A Free Comic Book Day issue has no issue number, so it replaces the issue number value.
     if 'fcbd' in comic_parse:
         if comic_parse['fcbd']:
-            issue = 'FCBD'
+            issue = ' FCBD'
     if 'year' in comic_parse:
-        if issue != 'NONE':
-            rename = title+' '+issue+' ('+str(comic_parse['year'])+')'
-        else:
-            rename = title+' ('+str(comic_parse['year'])+')'
+        year = ' (' + str(comic_parse['year']) + ')'
     else:
-        if issue != 'NONE':
-            rename = title+' '+issue
-        else:
-            rename = title
+        year = ''
+    # Construct the renamed filename.
+    rename = title + issue + year
     comic_file_renamed = os.path.join(superdir, rename+ext)
     print('Renaming', comic_file, '->', comic_file_renamed)
     shutil.move(comic_file, comic_file_renamed)
@@ -303,7 +338,7 @@ if len(sys.argv) > 1:
     if absolute_path != '':
         target_input = os.path.join('', absolute_path)
     if temp_dir == '' or (temp_dir != '' and not os.path.exists(temp_dir)):
-        temp_dir = tempfile.TemporaryDirectory()
+        temp_dir = tempfile.TemporaryDirectory().name
 
     print('absolute_path:', absolute_path)
     print('directory:', directory)
