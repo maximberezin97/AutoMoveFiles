@@ -198,22 +198,24 @@ def handle_video_file(video_file):
         if is_television(video_parse):
             # Get season if season was found.
             if 'season' in video_parse:
-                if video_parse['season'] < 10:
-                    season = ' S0' + str(video_parse['season'])
-                else:
-                    season = ' S' + str(video_parse['season'])
+                season = str(video_parse['season'])
             else:
-                season = ' S00'
+                season = '0'
             # Get episode if episode was found.
             if 'episode' in video_parse:
-                if video_parse['episode'] < 10:
-                    episode = 'E0' + str(video_parse['episode'])
-                else:
-                    episode = 'E' + str(video_parse['episode'])
+                episode = str(video_parse['episode'])
             else:
-                episode = 'E00'
-
-            rename = title + season + episode + year + resolution
+                episode = '0'
+            if len(season) > 1:
+                if len(episode) > 1:
+                    rename = title + ' S'+season + 'E'+episode + year + resolution
+                else:
+                    rename = title + ' S'+season + 'E0'+episode + year + resolution
+            else:
+                if len(episode) > 1:
+                    rename = title + ' S0'+season + 'E'+episode + year + resolution
+                else:
+                    rename = title + ' S0'+season + 'E0'+episode + year + resolution
         else:
             # No unique traits to movies, simply rename with present traits.
             rename = title + year + resolution
@@ -362,6 +364,7 @@ if len(sys.argv) > 1:
                 print('Copying directory', target_input, '->', target_temp)
                 shutil.copytree(target_input, target_temp)
                 handle_dir(target_temp)
+            print('Emptying ', target_temp, '...')
             for temp_subfile in os.listdir(target_temp):
                 temp_sub = os.path.join(target_temp, temp_subfile)
                 if os.path.isfile(temp_sub):
