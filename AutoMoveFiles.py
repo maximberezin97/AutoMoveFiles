@@ -364,13 +364,7 @@ if len(sys.argv) > 1:
                 print('Copying directory', target_input, '->', target_temp)
                 shutil.copytree(target_input, target_temp)
                 handle_dir(target_temp)
-            print('Emptying ', target_temp, '...')
-            for temp_subfile in os.listdir(target_temp):
-                temp_sub = os.path.join(target_temp, temp_subfile)
-                if os.path.isfile(temp_sub):
-                    os.remove(temp_sub)
-                elif os.path.isdir(temp_sub):
-                    shutil.rmtree(temp_sub)
+            shutil.rmtree(target_temp)
         else:
             print(target_input, 'does not exist.')
 else:

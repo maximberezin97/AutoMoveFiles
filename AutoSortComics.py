@@ -1,6 +1,7 @@
 import sys
 import os
-from PyComicVine import pycomicvine
+import urllib.request
+# from PyComicVine import pycomicvine
 #from comicvine_api import comicvine_api
 # import PyComicVine.pycomicvine as comicvine
 
@@ -21,7 +22,9 @@ def handle_comic(comic_file_path):
     print('Handling', comic_file_path)
     # c = comicvine_api.Comicvine()
     comic_file_name = get_file_name(file_path)
-    print(pycomicvine.Series.description)
+    print(urllib.request.urlopen('http://comicvine.gamespot.com/api/search/?format=json&api_key=' + comicvine_api_key +
+                 '&query=dick+grayson&resource_type=character').read())
+    # print(pycomicvine.Series.description)
     # print(c[comic_file_name])
     # comicvine.Volume.search(comic_file_name)
     sys.exit(0)
@@ -37,10 +40,10 @@ if len(sys.argv) > 1:
         if param[0] == 'directory':
             directory = param[1]
         elif param[0] == 'comicvine_api_key':
-            pycomicvine.api_key = param[1]
+            comicvine_api_key = param[1]
 
     print('directory:', directory)
-    print('ComicVine API key:', pycomicvine.api_key)
+    print('ComicVine API key:', comicvine_api_key)
 
     if os.path.exists(directory):
         if os.path.isdir(directory):
