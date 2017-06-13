@@ -1,5 +1,0 @@
-.DS_Store
-*.pyc
-/build
-/dist
-/comicvine_api.egg-info

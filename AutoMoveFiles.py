@@ -287,6 +287,7 @@ print(sys.argv)
 extract_types = {'.rar'}
 audio_types = {'.mp3', '.m4a', '.aac', '.flac'}
 video_types = {'.mp4', '.mkv', '.avi', '.wmv', '.mov'}
+subtitle_types = {'.srt', '.sub'}
 comic_types = {'.cbr', '.cbz', '.pdf'}
 PTN.patterns.patterns.append(('sample', 'Sample|SAMPLE|sample'))
 PTN.patterns.patterns.append(('digital', 'Digital|DIGITAL|digital|Webrip|WEBRIP|webrip'))
@@ -299,8 +300,6 @@ absolute_path = ''
 directory = ''
 filename = ''
 target_input = ''
-directory = ''
-filename = ''
 temp_dir = ''
 google_cse_id = ''
 google_api_key = ''

@@ -1,0 +1,6 @@
+mutagen
+rarfile
+google-api-python-client
+git+https://github.com/divijbindlish/parse-torrent-name.git
+git+https://github.com/swc/comicvine_api.git
+# git+https://github.com/miri64/pycomicvine.git
