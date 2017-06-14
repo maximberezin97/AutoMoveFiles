@@ -2,7 +2,7 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$" />
-    <orderEntry type="jdk" jdkName="Python 3.6.1 virtualenv at C:\Users\berem\virtualenvs\AutoMoveFiles_venv" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 2.7.13 virtualenv at C:\Users\Remote\autosortcomics_venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
