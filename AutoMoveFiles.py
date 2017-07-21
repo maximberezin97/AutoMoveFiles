@@ -67,9 +67,9 @@ def handle_file(target_file):
 
 def handle_dir(target_dir):
     print('Handling directory', target_dir)
-    for dirpath in os.walk(target_dir):
-        for file_in_dir in dirpath[2]:
-            handle_file(os.path.join(dirpath[0], file_in_dir))
+    for target_root, target_dirs, target_files in os.walk(target_dir):
+        for target_file in target_files:
+            handle_file(os.path.join(target_root, target_file))
 
 
 def handle_audio_file(audio_file):
@@ -147,11 +147,11 @@ def get_cover_art(artist, album, audio_path):
 def cover_in_src(audio_path):
     if os.path.isfile(audio_path):
         audio_path = os.path.dirname(audio_path)
-    for dirpath in os.walk(audio_path):
-        for file in dirpath[2]:
-            name = os.path.basename(file).lower()
+    for target_root, target_dirs, target_files in os.walk(audio_path):
+        for target_file in target_files[2]:
+            name = os.path.basename(target_file).lower()
             if name == 'cover.jpg' or name == 'folder.jpg':
-                path = os.path.join(dirpath[0], file)
+                path = os.path.join(target_root, target_file)
                 print('Cover found in', path)
                 return path
     return None
@@ -363,7 +363,11 @@ if len(sys.argv) > 1:
                 print('Copying directory', target_input, '->', target_temp)
                 shutil.copytree(target_input, target_temp)
                 handle_dir(target_temp)
-            shutil.rmtree(target_temp)
+            for root, dirs, files in os.walk(temp_dir):
+                for f in files:
+                    os.unlink(os.path.join(root, f))
+                for d in dirs:
+                    shutil.rmtree(os.path.join(root, d))
         else:
             print(target_input, 'does not exist.')
 else:
