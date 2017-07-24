@@ -59,6 +59,8 @@ def handle_file(target_file):
         handle_audio_file(target_file)
     elif extension in video_types:
         handle_video_file(target_file)
+    elif extension in subtitle_types:
+        handle_subtitle_file(target_file)
     elif extension in comic_types:
         handle_comic_file(target_file)
     else:
@@ -244,6 +246,14 @@ def handle_video_file(video_file):
     else:
         # If the parser found that this file is a sample file, skip it entirely.
         print('Sample video file, skipping.')
+
+
+def handle_subtitle_file(subtitle_file):
+    print('Handling subtitle file', subtitle_file)
+    superdir = os.path.dirname(subtitle_file)
+    name, ext = os.path.splitext(os.path.basename(subtitle_file))
+    subtitle_parse = PTN.parse(name)
+    print(subtitle_parse)
 
 
 def handle_comic_file(comic_file):
